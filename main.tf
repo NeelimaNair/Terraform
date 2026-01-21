@@ -65,11 +65,11 @@ resource "aws_s3_bucket_policy" "allow_vpc_endpoint" {
 resource "aws_vpc_endpoint" "s3_vpc_endpoint" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.ap-southeast-2.s3"
-  vpc_endpoint_type = "Interface"
-  route_table_ids   = [aws_vpc.main.default_route_table_id]
+  vpc_endpoint_type = "Interface"  
   security_group_ids = [
     aws_security_group.vpc_endpoint_sg.id
   ]
+  private_dns_enabled = false
 }
 
 # -------------------------------
