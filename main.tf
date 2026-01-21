@@ -65,8 +65,11 @@ resource "aws_s3_bucket_policy" "allow_vpc_endpoint" {
 resource "aws_vpc_endpoint" "s3_vpc_endpoint" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.ap-southeast-2.s3"
-  vpc_endpoint_type = "Gateway"
+  vpc_endpoint_type = "Interface"
   route_table_ids   = [aws_vpc.main.default_route_table_id]
+  security_group_ids = [
+    aws_security_group.vpc_endpoint_sg.id
+  ]
 }
 
 # -------------------------------
@@ -91,6 +94,22 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 
+# -------------------------------
+# Security Group for VPC Endpoint
+# -------------------------------
+resource "aws_security_group" "vpc_endpoint_sg" {
+  vpc_id = aws_vpc.main.id
+  name   = "vpc-endpoint-sg"   
+}
+
+resource "aws_vpc_security_group_ingress_rule" "vpc_endpoint_sg_ingress_rule" {
+  security_group_id = aws_security_group.vpc_endpoint_sg.id
+
+  referenced_security_group_id   = aws_security_group.alb_sg.id
+  from_port   = 80
+  ip_protocol = "tcp"
+  to_port     = 80
+}
 
 # -------------------------------
 # ALB
