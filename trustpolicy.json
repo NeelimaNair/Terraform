@@ -1,0 +1,22 @@
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TFCWorkspaceWildcardRunPhase",
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::730335337153:oidc-provider/app.terraform.io"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "SITE_ADDRESS_NO_HTTPS:aud": "aws.workload.identity"
+        },
+        "StringLike": {
+          "SITE_ADDRESS_NO_HTTPS:sub": "organization:neels_sandbox:project:Default Project:workspace:Terraform:run_phase:*"
+        }
+      }
+    }
+  ]
+}

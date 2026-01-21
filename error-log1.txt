@@ -1,0 +1,14 @@
+Error: creating EC2 VPC Endpoint Service: operation error EC2: CreateVpcEndpointServiceConfiguration, https response error StatusCode: 400, RequestID: 3405fdbf-ff4b-4407-b999-74a07bd10dc1, api error InvalidNetworkLoadBalancerArn.Malformed: UnknownError
+with aws_vpc_endpoint_service.alb_service
+on main.tf line 117, in resource "aws_vpc_endpoint_service" "alb_service":
+resource "aws_vpc_endpoint_service" "alb_service" {
+
+Error: creating S3 Bucket (internal-static-files): operation error S3: CreateBucket, https response error StatusCode: 409, RequestID: 8RVWY9ZKH2NNAEQH, HostID: q96hCkiMEyayI0nDLV0AWvlkOTMx9a0e4oIosK3xaQPzwResiap2dq7GGgxWFfjNK3OaBvshYtsn/BCdfJp5u2cCqvBJuTN3, BucketAlreadyExists:
+with aws_s3_bucket.static_files
+on main.tf line 27, in resource "aws_s3_bucket" "static_files":
+resource "aws_s3_bucket" "static_files" {
+
+Error: creating ELBv2 Listener (arn:aws:elasticloadbalancing:ap-southeast-2:730335337153:loadbalancer/app/alb-internal/350722fc4ebf3392): operation error Elastic Load Balancing v2: CreateListener, https response error StatusCode: 400, RequestID: fdf05dcc-0b3a-43d5-898f-06b4f4f7e078, api error ValidationError: Certificate ARN 'arn:aws:acm:us-east-1:730335337153:certificate/cf85ff40-a52f-4939-8be4-e1a3cffcbe5e' is not valid
+with aws_lb_listener.https_listener
+on main.tf line 101, in resource "aws_lb_listener" "https_listener":
+resource "aws_lb_listener" "https_listener" {

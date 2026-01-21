@@ -24,12 +24,12 @@ resource "aws_subnet" "private_b" {
 # -------------------------------
 # S3 Bucket
 # -------------------------------
-resource "aws_s3_bucket" "static_files" {
-  bucket = "internal-static-files"
+resource "aws_s3_bucket" "static_files_s3" {
+  bucket = "doe-testing-internal-static-files"
 }
 
 resource "aws_s3_bucket_policy" "allow_vpc_endpoint" {
-  bucket = aws_s3_bucket.static_files.id
+  bucket = aws_s3_bucket.static_files_s3.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -37,10 +37,21 @@ resource "aws_s3_bucket_policy" "allow_vpc_endpoint" {
         Effect    = "Allow"
         Principal = "*"
         Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.static_files.arn}/*"
+        Resource  = "${aws_s3_bucket.static_files_s3.arn}/*"
         Condition = {
           StringEquals = {
-            "aws:SourceVpce" = aws_vpc_endpoint.s3.id
+            "aws:SourceVpce" = aws_vpc_endpoint.s3_vpc_endpoint.id
+          }
+        }
+      },      
+      {
+        Effect: "Allow",
+        Principal: "*",
+        Action: "s3:ListBucket",
+        Resource: "${aws_s3_bucket.static_files_s3.arn}",
+        Condition: {
+          StringEquals: {
+            "aws:SourceVpce": aws_vpc_endpoint.s3_vpc_endpoint.id
           }
         }
       }
@@ -51,7 +62,7 @@ resource "aws_s3_bucket_policy" "allow_vpc_endpoint" {
 # -------------------------------
 # VPC Endpoint for S3
 # -------------------------------
-resource "aws_vpc_endpoint" "s3" {
+resource "aws_vpc_endpoint" "s3_vpc_endpoint" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.ap-southeast-2.s3"
   vpc_endpoint_type = "Gateway"
@@ -79,6 +90,7 @@ resource "aws_security_group" "alb_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+
 
 # -------------------------------
 # ALB
@@ -114,15 +126,15 @@ resource "aws_lb_listener" "https_listener" {
 # -------------------------------
 # PrivateLink Endpoint for ALB → S3
 # -------------------------------
-resource "aws_vpc_endpoint_service" "alb_service" {
-  acceptance_required        = false
-  network_load_balancer_arns = [aws_lb.internal_alb.arn]
-}
+#resource "aws_vpc_endpoint_service" "alb_service" {
+#  acceptance_required        = false
+#  network_load_balancer_arns = [aws_lb.internal_alb.arn]
+#}
 
-resource "aws_vpc_endpoint" "alb_endpoint" {
-  vpc_id             = aws_vpc.main.id
-  service_name       = aws_vpc_endpoint_service.alb_service.service_name
-  vpc_endpoint_type  = "Interface"
-  subnet_ids         = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-  security_group_ids = [aws_security_group.alb_sg.id]
-}
+#resource "aws_vpc_endpoint" "alb_endpoint" {
+#  vpc_id             = aws_vpc.main.id
+#  service_name       = aws_vpc_endpoint_service.alb_service.service_name
+#  vpc_endpoint_type  = "Interface"
+#  subnet_ids         = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+#  security_group_ids = [aws_security_group.alb_sg.id]
+#}
