@@ -69,7 +69,7 @@ resource "aws_vpc_endpoint" "s3_vpc_endpoint" {
   security_group_ids = [
     aws_security_group.vpc_endpoint_sg.id
   ]
-  private_dns_enabled = false
+  private_dns_enabled = true
 }
 
 # -------------------------------
