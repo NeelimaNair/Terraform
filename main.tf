@@ -25,7 +25,7 @@ resource "aws_subnet" "private_b" {
 # S3 Bucket
 # -------------------------------
 resource "aws_s3_bucket" "static_files_s3" {
-  bucket = "doe-testing-internal-static-files"
+  bucket = "internal.de"
 }
 
 resource "aws_s3_bucket_policy" "allow_vpc_endpoint" {
