@@ -144,7 +144,7 @@ resource "aws_vpc_endpoint_subnet_association" "vpcsubnet_Stg_mel_PROJECT_02" {
 
 # Load each ENI of the endpoint
 data "aws_network_interface" "vpce_enis" {
-  for_each = toset(data.aws_vpc_endpoint.s3_vpc_endpoint.network_interface_ids)
+  for_each = toset(aws_vpc_endpoint.s3_vpc_endpoint.network_interface_ids)
   id       = each.value
 }
 
