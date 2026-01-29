@@ -133,18 +133,18 @@ resource "aws_vpc_endpoint" "s3_vpc_endpoint" {
 
 resource "aws_vpc_endpoint_subnet_association" "vpcsubnet_Stg_mel_PROJECT_01" {
   vpc_endpoint_id = aws_vpc_endpoint.s3_vpc_endpoint.id
-  subnet_id       = aws_subnet.sub_Stg_mel_PROJECT_01.id
+  subnet_id       = aws_subnet.sub_mel_PROJECT_01.id
 }
 
 resource "aws_vpc_endpoint_subnet_association" "vpcsubnet_Stg_mel_PROJECT_02" {
   vpc_endpoint_id = aws_vpc_endpoint.s3_vpc_endpoint.id
-  subnet_id       = aws_subnet.sub_Stg_mel_PROJECT_02.id
+  subnet_id       = aws_subnet.sub_mel_PROJECT_02.id
 }
 
 
 # Load each ENI of the endpoint
 data "aws_network_interface" "vpce_enis" {
-  for_each = toset(data.aws_vpc_endpoint.vpce.network_interface_ids)
+  for_each = toset(data.aws_vpc_endpoint.s3_vpc_endpoint.network_interface_ids)
   id       = each.value
 }
 
@@ -210,12 +210,12 @@ resource "aws_lb" "alb_Stg_mel_PROJECT_01" {
   internal           = true
   load_balancer_type = "application"
   security_groups    = [aws_security_group.sgr_Stg_mel_PROJECT_01.id]
-  subnets            = [aws_subnet.sub_Stg_mel_PROJECT_01.id, aws_subnet.sub_Stg_mel_PROJECT_02.id]
+  subnets            = [aws_subnet.sub_mel_PROJECT_01.id, aws_subnet.sub_mel_PROJECT_02.id]
   tags               = local.tags
 }
 
 resource "aws_lb_target_group" "albtg_mel_project" {
-  name     = "albtg-${var.env}-mel-${project}"
+  name     = "albtg-${var.env}-mel-${var.project}"
   port     = 443
   protocol = "HTTPS"
   vpc_id   = aws_vpc.main.id
