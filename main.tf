@@ -109,7 +109,7 @@ resource "aws_vpc_endpoint" "s3_vpc_endpoint" {
 # -------------------------------
 resource "aws_security_group" "sgr_Stg_mel_PROJECT_01" {
   vpc_id = aws_vpc.main.id
-  name   = "alb-sg"
+  name   = "sgr-Stg-mel-PROJECT-01"
 
   ingress {
     from_port   = 443
@@ -134,16 +134,9 @@ resource "aws_security_group" "sgr_Stg_mel_PROJECT_02" {
   name   = "vpc-endpoint-sg"   
 
   ingress {
-    referenced_security_group_id   = aws_security_group.sgr-Stg-mel-PROJECT-01.id
-    from_port   = 80
-    ip_protocol = "tcp"
-    to_port     = 80
-  }
-
-  ingress {
-    referenced_security_group_id   = aws_security_group.sgr-Stg-mel-PROJECT-01.id
+    referenced_security_group_id   = aws_security_group.sgr_Stg_mel_PROJECT_01.id
     from_port   = 443
-    ip_protocol = "tcp"
+    protocol = "tcp"
     to_port     = 443
   }
 
@@ -157,7 +150,7 @@ resource "aws_lb" "alb_Stg_mel_PROJECT_01" {
   name               = "alb-Stg-mel-PROJECT-01"
   internal           = true
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.sgr-Stg-mel-PROJECT-01.id]
+  security_groups    = [aws_security_group.sgr_Stg_mel_PROJECT_01.id]
   subnets            = [aws_subnet.sub_Stg_mel_PROJECT_01.id, aws_subnet.sub_Stg_mel_PROJECT_02.id]
   tags               = local.tags
 }
@@ -242,5 +235,5 @@ resource "aws_lb_listener_rule" "redirect_trailing_slash" {
 #  service_name       = aws_vpc_endpoint_service.alb_service.service_name
 #  vpc_endpoint_type  = "Interface"
 #  subnet_ids         = [aws_subnet.sub_Stg_mel_PROJECT_01.id, aws_subnet.sub_Stg_mel_PROJECT_02.id]
-#  security_group_ids = [aws_security_group.sgr-Stg-mel-PROJECT-01.id]
+#  security_group_ids = [aws_security_group.sgr_Stg_mel_PROJECT_01.id]
 #}

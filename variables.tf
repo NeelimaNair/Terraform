@@ -23,6 +23,11 @@ variable service {
   default     = ""
 }
 
+variable serviceDescription {
+  description = "Service Description name for tagging."
+  type        = string
+  default     = ""
+}
 
 variable costCentre {
   description = "Cost Centre for tagging."
