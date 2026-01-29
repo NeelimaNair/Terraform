@@ -134,7 +134,7 @@ resource "aws_security_group" "sgr_Stg_mel_PROJECT_02" {
   name   = "vpc-endpoint-sg"   
 
   ingress {
-    security_groups = aws_security_group.sgr_Stg_mel_PROJECT_01.id
+    security_groups = [aws_security_group.sgr_Stg_mel_PROJECT_01.id]
     from_port   = 443
     protocol = "tcp"
     to_port     = 443
