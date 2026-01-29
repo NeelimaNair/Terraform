@@ -84,3 +84,17 @@ variable "tags" {
   type        = map(string)
   default     = {}  
 }
+
+#Environment for resource naming
+variable "env" {
+  description = "Deployment environment (e.g., 	prd, stg(UAT), tst (SIT), dev)."
+  type        = string
+  default     = "stg"
+}
+
+#Project for resource naming
+variable "project" {
+  description = "Project Name"
+  type        = string
+  default     = "static"
+}

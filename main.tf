@@ -19,7 +19,13 @@ locals {
       "DeploymentDateTime" = timestamp() # RFC3339 UTC, e.g. 2026-01-23T02:25:00Z
     },
     var.tags
-  )
+  )  
+  vpce_ips = flatten([
+    for eni in data.aws_network_interface.vpce_enis : [
+      for pip in eni.private_ips : pip.private_ip_address
+    ]
+  ])
+
 }
 
 # -------------------------------
@@ -114,6 +120,14 @@ resource "aws_vpc_endpoint_subnet_association" "vpcsubnet_Stg_mel_PROJECT_02" {
   subnet_id       = aws_subnet.sub_Stg_mel_PROJECT_02.id
 }
 
+
+# Load each ENI of the endpoint
+data "aws_network_interface" "vpce_enis" {
+  for_each = toset(data.aws_vpc_endpoint.vpce.network_interface_ids)
+  id       = each.value
+}
+
+
 # -------------------------------
 # Security Group for ALB
 # -------------------------------
@@ -165,16 +179,17 @@ resource "aws_lb" "alb_Stg_mel_PROJECT_01" {
   tags               = local.tags
 }
 
-resource "aws_lb_target_group" "s3_target" {
-  name     = "s3-target"
+resource "aws_lb_target_group" "albtg_${var.env}_mel_${project}" {
+  name     = "albtg-${var.env}-mel-${project}"
   port     = 443
   protocol = "HTTPS"
   vpc_id   = aws_vpc.main.id
+  target_type = "ip" 
 
   # Health checks via HTTP on port 80 with relaxed success codes
   health_check {
     enabled             = true
-    protocol            = "HTTP"
+    protocol            = "HTTP"               # or TCP
     port                = "80"                 # Port override to match HTTP
     path                = "/"                  # S3 will respond even without Host header
     matcher             = "200,307,405"        # Added 307 & 405 to success codes
@@ -187,6 +202,16 @@ resource "aws_lb_target_group" "s3_target" {
   tags = local.tags
 }
 
+
+# Attach each discovered IP to the target group
+resource "aws_lb_target_group_attachment" "vpce_ip_attachments" {
+  for_each         = toset(local.vpce_ips)
+  target_group_arn = aws_lb_target_group.albtg_${var.env}_mel_${project}.arn
+  target_id        = each.value            # IP address
+  port             = 443
+}
+
+
 resource "aws_lb_listener" "https_listener" {
   load_balancer_arn = aws_lb.alb_Stg_mel_PROJECT_01.arn
   port              = 443
@@ -196,7 +221,7 @@ resource "aws_lb_listener" "https_listener" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.s3_target.arn
+    target_group_arn = aws_lb_target_group.albtg_${var.env}_mel_${project}.arn
   }
 
   tags = local.tags
