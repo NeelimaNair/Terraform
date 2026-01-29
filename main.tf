@@ -256,7 +256,7 @@ resource "aws_lb_listener" "https_listener" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.albtg_${var.env}_mel_${project}.arn
+    target_group_arn = aws_lb_target_group.albtg_mel_project.arn
   }
 
   tags = local.tags
