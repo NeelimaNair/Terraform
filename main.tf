@@ -2,31 +2,51 @@ provider "aws" {
   region = "ap-southeast-2" # Sydney
 }
 
+resource "time_static" "deployed_at" {}
+
 locals {
+  # ---- Tags (unchanged, but see note about timestamp() below) ----
   tags = merge(
     {
-      "CostCentre"          = var.costCentre
-      "Environment"         = var.tag_environment
-      "Service"             = var.service
-      "ServiceOwner"        = var.serviceOwner
-      "ServiceDescription"  = var.serviceDescription
-      "ServiceOwnerGroup"   = var.serviceOwnerGroup
-      "TechnicalContact"    = var.technicalContact
+      "CostCentre"            = var.costCentre
+      "Environment"           = var.tag_environment
+      "Service"               = var.service
+      "ServiceOwner"          = var.serviceOwner
+      "ServiceDescription"    = var.serviceDescription
+      "ServiceOwnerGroup"     = var.serviceOwnerGroup
+      "TechnicalContact"      = var.technicalContact
       "TechnicalContactGroup" = var.technicalContactGroup
-      "DataClassification"  = var.dataClassification
-      "DeploymentType" = var.deploymentType
-      "Deployer"      = var.deployer       
-      "DeploymentDateTime" = timestamp() # RFC3339 UTC, e.g. 2026-01-23T02:25:00Z
+      "DataClassification"    = var.dataClassification
+      "DeploymentType"        = var.deploymentType
+      "Deployer"              = var.deployer
+      "DeploymentDateTime"    = time_static.deployed_at.rfc3339
     },
     var.tags
-  )  
-  vpce_ips = flatten([
-    for eni in data.aws_network_interface.vpce_enis : [
-      for pip in eni.private_ips : pip.private_ip_address
-    ]
-  ])
+  )
 
+  # We'll derive a stable key set for for_each: "0","1" (one per VPCE subnet)
+  # NOTE: Using a literal list means Terraform knows its length at plan time,
+  # even though the individual IDs are unknown until apply.
+  vpce_subnet_ids = [
+    aws_subnet.sub_mel_PROJECT_01.id,
+    aws_subnet.sub_mel_PROJECT_02.id
+  ]
+
+  vpce_indices = toset([for i in range(length(local.vpce_subnet_ids)) : tostring(i)])
 }
+
+
+
+
+
+# Map: index -> ENI primary private IP (keys known at plan)
+locals {
+  vpce_ips_map = {
+    for k, eni in data.aws_network_interface.vpce_eni :
+    k => eni.private_ip
+  }
+}
+
 
 # -------------------------------
 # VPC and Subnets
@@ -64,7 +84,7 @@ resource "aws_subnet" "sub_mel_PROJECT_02" {
   tags = merge(
     local.tags,
     {
-      Name = "sub-${var.env}-mel-${var.project}-${var.subnet1_suffix}"
+      Name = "sub-${var.env}-mel-${var.project}-${var.subnet2_suffix}"
     }
   )
 
@@ -76,14 +96,15 @@ resource "aws_subnet" "sub_mel_PROJECT_02" {
 # S3 Bucket
 # -------------------------------
 resource "aws_s3_bucket" "static_files_s3" {
-  bucket = "internal.de"
+  bucket = var.s3_bucket_name
 
   tags        = local.tags
 
-  # Optional: avoid perpetual diffs on this tag by ignoring changes
-  lifecycle {
-    ignore_changes = [tags["DeploymentDateTime"]]
-  }
+  # Optional: avoid perpetual diffs on this tag by ignoring changes if not static
+  # Commented because using static now. Would need to do this at all places where tag is used
+  # lifecycle {
+  #   ignore_changes = [tags["DeploymentDateTime"]]
+  # }
 
 }
 
@@ -118,34 +139,22 @@ resource "aws_s3_bucket_policy" "allow_vpc_endpoint" {
   })
 }
 
-# -------------------------------
-# VPC Endpoint for S3
-# -------------------------------
+# Prefer attaching subnets directly on the endpoint (simpler than association resources)
 resource "aws_vpc_endpoint" "s3_vpc_endpoint" {
-  vpc_id            = aws_vpc.main.id
-  service_name      = "com.amazonaws.ap-southeast-2.s3"
-  vpc_endpoint_type = "Interface"  
-  security_group_ids = [
-    aws_security_group.sgr_Stg_mel_PROJECT_02.id
-  ]
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.ap-southeast-2.s3"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = local.vpce_subnet_ids
+  security_group_ids  = [aws_security_group.sgr_Stg_mel_PROJECT_02.id]
   private_dns_enabled = true
 }
 
-resource "aws_vpc_endpoint_subnet_association" "vpcsubnet_Stg_mel_PROJECT_01" {
-  vpc_endpoint_id = aws_vpc_endpoint.s3_vpc_endpoint.id
-  subnet_id       = aws_subnet.sub_mel_PROJECT_01.id
-}
 
-resource "aws_vpc_endpoint_subnet_association" "vpcsubnet_Stg_mel_PROJECT_02" {
-  vpc_endpoint_id = aws_vpc_endpoint.s3_vpc_endpoint.id
-  subnet_id       = aws_subnet.sub_mel_PROJECT_02.id
-}
-
-
-# Load each ENI of the endpoint
-data "aws_network_interface" "vpce_enis" {
-  for_each = toset(aws_vpc_endpoint.s3_vpc_endpoint.network_interface_ids)
-  id       = each.value
+# Read each ENI by stable index key
+data "aws_network_interface" "vpce_eni" {
+  for_each = local.vpce_indices
+  id       = aws_vpc_endpoint.s3_vpc_endpoint.network_interface_ids[tonumber(each.key)]
+  depends_on = [aws_vpc_endpoint.s3_vpc_endpoint]
 }
 
 
@@ -159,7 +168,7 @@ resource "aws_security_group" "sgr_Stg_mel_PROJECT_01" {
   tags = merge(
     local.tags,
     {
-      Name = "sub-${var.env}-mel-${var.project}-${var.sg1_suffix}"
+      Name = "sgr-${var.env}-mel-${var.project}-${var.sg1_suffix}"
     }
   )
 
@@ -188,7 +197,7 @@ resource "aws_security_group" "sgr_Stg_mel_PROJECT_02" {
   tags = merge(
     local.tags,
     {
-      Name = "sub-${var.env}-mel-${var.project}-${var.sg2_suffix}"
+      Name = "sgr-${var.env}-mel-${var.project}-${var.sg2_suffix}"
     }
   ) 
 
@@ -198,6 +207,14 @@ resource "aws_security_group" "sgr_Stg_mel_PROJECT_02" {
     protocol = "tcp"
     to_port     = 443
   }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
 
 }
 
@@ -224,10 +241,10 @@ resource "aws_lb_target_group" "albtg_mel_project" {
   # Health checks via HTTP on port 80 with relaxed success codes
   health_check {
     enabled             = true
-    protocol            = "HTTP"               # or TCP
-    port                = "80"                 # Port override to match HTTP
+    protocol            = "HTTPS"              
+    port                = "443"                 # Port override to match HTTP
     path                = "/"                  # S3 will respond even without Host header
-    matcher             = "200,307,405"        # Added 307 & 405 to success codes
+    matcher             = "200-499"        # Accept 4xx to accommodate S3 responses without correct Host
     interval            = 30
     timeout             = 5
     healthy_threshold   = 3
@@ -240,9 +257,9 @@ resource "aws_lb_target_group" "albtg_mel_project" {
 
 # Attach each discovered IP to the target group
 resource "aws_lb_target_group_attachment" "vpce_ip_attachments" {
-  for_each         = toset(local.vpce_ips)
+  for_each         = local.vpce_ips_map
   target_group_arn = aws_lb_target_group.albtg_mel_project.arn
-  target_id        = each.value            # IP address
+  target_id        = each.value
   port             = 443
 }
 
@@ -258,8 +275,7 @@ resource "aws_lb_listener" "https_listener" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.albtg_mel_project.arn
   }
-
-  tags = local.tags
+  
 }
 
 # ---------------------------------------------
@@ -289,7 +305,6 @@ resource "aws_lb_listener_rule" "redirect_trailing_slash" {
     }
   }
 
-  tags = local.tags
 }
 
 # -------------------------------

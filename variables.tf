@@ -122,3 +122,9 @@ variable "sg2_suffix" {
   type        = string
   default     = "vpce"
 }
+
+variable "s3_bucket_name" {
+  description = "S3 bucket name"
+  type        = string
+  default     = "internal.de"
+}

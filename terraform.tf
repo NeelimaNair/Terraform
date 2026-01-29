@@ -3,6 +3,10 @@ terraform {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0" # Adjust version as needed
+    }    
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.11"
     }
   }
 
