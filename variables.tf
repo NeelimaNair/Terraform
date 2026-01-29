@@ -76,6 +76,5 @@ variable deployer {
 variable "tags" {
   description = "Additional/override tags. Later keys override defaults in locals.tags."
   type        = map(string)
-  default     = {}
-  default     = ""
+  default     = {}  
 }
