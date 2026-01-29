@@ -11,70 +11,71 @@ variable "ssl_policy" {
   default     = "ELBSecurityPolicy-TLS13-1-2-2021-06"
 }
 
+#Member must satisfy regular expression pattern: ^([\p{L}\p{Z}\p{N}_.:/=+\-@]*)$.(UAT) giving error 
 variable "tag_environment" {
   description = "Deployment environment (e.g., Development/Test/Staging(UAT)/Production)."
   type        = string
-  default     = "Staging(UAT)"
+  default     = "Staging"
 }
 
 variable service {
   description = "Service name for tagging."
   type        = string
-  default     = ""
+  default     = "StaticFiles"
 }
 
 variable serviceDescription {
   description = "Service Description name for tagging."
   type        = string
-  default     = ""
+  default     = "StaticFiles"
 }
 
 variable costCentre {
   description = "Cost Centre for tagging."
   type        = string
-  default     = ""
+  default     = "StaticFiles"
 }
 
 variable serviceOwner {
   description = "Service Owner for tagging."
   type        = string
-  default     = ""
+  default     = "StaticFiles"
 }
 
 variable serviceOwnerGroup {
   description = "Service Owner Group for tagging."
   type        = string
-  default     = ""
+  default     = "StaticFiles"
 }
 
 variable technicalContact {
   description = "Technical Contact for tagging."
   type        = string
-  default     = ""
+  default     = "StaticFiles"
 }
 
 variable technicalContactGroup {
   description = "Technical Contact Group Name for tagging."
   type        = string
-  default     = ""
+  default     = "StaticFiles"
 }
 
 variable dataClassification {
   description = "Data Classification for tagging."
   type        = string
-  default     = ""
+  default     = "StaticFiles"
 }
 
 variable deploymentType {
   description = "Deployment Type for tagging."
   type        = string
-  default     = ""
+  default     = "TFC"
 }
 
 variable deployer {
   description = "Deployer for tagging."
   type        = string
-  default     = ""
+  default     = "Neelima Nair"
 }
 
 # NEW: user-supplied tags that can override defaults
