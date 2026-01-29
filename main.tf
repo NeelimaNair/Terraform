@@ -35,18 +35,39 @@ resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
   enable_dns_hostnames = true
   enable_dns_support = true
+  tags = merge(
+    local.tags,
+    {
+      Name = "vpc-${var.env}-mel-${var.project}"
+    }
+  )
 }
 
-resource "aws_subnet" "sub_Stg_mel_PROJECT_01" {
+resource "aws_subnet" "sub_mel_PROJECT_01" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.1.0/24"
   availability_zone = "ap-southeast-2a"
+  tags = merge(
+    local.tags,
+    {
+      Name = "sub-${var.env}-mel-${var.project}-${var.subnet1_suffix}"
+    }
+  )
 }
 
-resource "aws_subnet" "sub_Stg_mel_PROJECT_02" {
+resource "aws_subnet" "sub_mel_PROJECT_02" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.2.0/24"
   availability_zone = "ap-southeast-2b"
+
+  
+  tags = merge(
+    local.tags,
+    {
+      Name = "sub-${var.env}-mel-${var.project}-${var.subnet1_suffix}"
+    }
+  )
+
 }
 
 
@@ -133,7 +154,14 @@ data "aws_network_interface" "vpce_enis" {
 # -------------------------------
 resource "aws_security_group" "sgr_Stg_mel_PROJECT_01" {
   vpc_id = aws_vpc.main.id
-  name   = "sgr-Stg-mel-PROJECT-01"
+  name   = "sgr-${var.env}-mel-${var.project}-${var.sg1_suffix}"
+
+  tags = merge(
+    local.tags,
+    {
+      Name = "sub-${var.env}-mel-${var.project}-${var.sg1_suffix}"
+    }
+  )
 
   ingress {
     from_port   = 443
@@ -155,7 +183,14 @@ resource "aws_security_group" "sgr_Stg_mel_PROJECT_01" {
 # -------------------------------
 resource "aws_security_group" "sgr_Stg_mel_PROJECT_02" {
   vpc_id = aws_vpc.main.id
-  name   = "vpc-endpoint-sg"   
+  name   = "sgr-${var.env}-mel-${var.project}-${var.sg2_suffix}"  
+
+  tags = merge(
+    local.tags,
+    {
+      Name = "sub-${var.env}-mel-${var.project}-${var.sg2_suffix}"
+    }
+  ) 
 
   ingress {
     security_groups = [aws_security_group.sgr_Stg_mel_PROJECT_01.id]

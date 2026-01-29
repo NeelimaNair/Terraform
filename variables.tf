@@ -98,3 +98,27 @@ variable "project" {
   type        = string
   default     = "static"
 }
+
+variable "subnet1_suffix" {
+  description = "Suffix for Subnet 1"
+  type        = string
+  default     = "private-a"
+}
+
+variable "subnet2_suffix" {
+  description = "Suffix for Subnet 2"
+  type        = string
+  default     = "private-b"
+}
+
+variable "sg1_suffix" {
+  description = "Suffix for Security Group 1"
+  type        = string
+  default     = "alb"
+}
+
+variable "sg2_suffix" {
+  description = "Suffix for Security Group  2"
+  type        = string
+  default     = "vpce"
+}
