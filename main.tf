@@ -104,6 +104,16 @@ resource "aws_vpc_endpoint" "s3_vpc_endpoint" {
   private_dns_enabled = true
 }
 
+resource "aws_vpc_endpoint_subnet_association" "vpcsubnet_Stg_mel_PROJECT_01" {
+  vpc_endpoint_id = aws_vpc_endpoint.s3_vpc_endpoint.id
+  subnet_id       = aws_subnet.sub_Stg_mel_PROJECT_01.id
+}
+
+resource "aws_vpc_endpoint_subnet_association" "vpcsubnet_Stg_mel_PROJECT_02" {
+  vpc_endpoint_id = aws_vpc_endpoint.s3_vpc_endpoint.id
+  subnet_id       = aws_subnet.sub_Stg_mel_PROJECT_02.id
+}
+
 # -------------------------------
 # Security Group for ALB
 # -------------------------------
