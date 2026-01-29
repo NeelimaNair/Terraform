@@ -179,7 +179,7 @@ resource "aws_lb" "alb_Stg_mel_PROJECT_01" {
   tags               = local.tags
 }
 
-resource "aws_lb_target_group" "albtg_${var.env}_mel_${project}" {
+resource "aws_lb_target_group" "albtg_mel_project" {
   name     = "albtg-${var.env}-mel-${project}"
   port     = 443
   protocol = "HTTPS"
@@ -206,7 +206,7 @@ resource "aws_lb_target_group" "albtg_${var.env}_mel_${project}" {
 # Attach each discovered IP to the target group
 resource "aws_lb_target_group_attachment" "vpce_ip_attachments" {
   for_each         = toset(local.vpce_ips)
-  target_group_arn = aws_lb_target_group.albtg_${var.env}_mel_${project}.arn
+  target_group_arn = aws_lb_target_group.albtg_mel_project.arn
   target_id        = each.value            # IP address
   port             = 443
 }
