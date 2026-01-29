@@ -1,0 +1,57 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>S3 Static Site Test Page</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 40px;
+            background: #f4f4f4;
+        }
+        .box {
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+           ;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        #js-test {
+            margin-top: 10px;
+            color: blue;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="box">
+        <h1>🚀 S3 Static Website Test</h1>
+        <p class="success">If you're seeing this, your S3 website hosting is working!</p>
+
+        <h3>CSS Test</h3>
+        <p>The box styling above confirms CSS is loading.</p>
+
+        <h3>JavaScript Test</h3>
+        <p id="js-test">Checking JavaScript…</p>
+
+        <h3>Image Test (Optional)</h3>
+        <p>If the image appears, S3 is serving static assets correctly:</p>
+        test-image.png
+        <p style="font-size: 12px; color: gray;">(Upload test-image.png to your bucket to test this.)</p>
+    </div>
+
+    <script>
+        document.getElementById('js-test').textContent =
+            "JavaScript is working ✔️";
+    </script>
+
+</body>
+</html>
