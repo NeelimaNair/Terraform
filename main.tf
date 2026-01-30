@@ -26,8 +26,8 @@ locals {
 
   # Static, plan-time-known list of subnets for VPCE placement
   vpce_subnet_ids = [
-    aws_subnet.sub_mel_PROJECT_01.id,
-    aws_subnet.sub_mel_PROJECT_02.id
+    aws_subnet.sub_mel_datasphere_private_a.id,
+    aws_subnet.sub_mel_datasphere_private_b.id
   ]
 
   vpce_indices = toset([for i in range(length(local.vpce_subnet_ids)) : tostring(i)])
@@ -52,7 +52,7 @@ locals {
 # VPC and Subnets
 # -------------------------------
 resource "aws_vpc" "main" {
-  cidr_block = "10.0.0.0/16"
+  cidr_block = "10.0.0.0/27"
   enable_dns_hostnames = true
   enable_dns_support = true
   tags = merge(
@@ -63,9 +63,9 @@ resource "aws_vpc" "main" {
   )
 }
 
-resource "aws_subnet" "sub_mel_PROJECT_01" {
+resource "aws_subnet" "sub_mel_datasphere_private_a" {
   vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.1.0/24"
+  cidr_block        = "10.0.0.0/28"
   availability_zone = "ap-southeast-2a"
   tags = merge(
     local.tags,
@@ -75,9 +75,9 @@ resource "aws_subnet" "sub_mel_PROJECT_01" {
   )
 }
 
-resource "aws_subnet" "sub_mel_PROJECT_02" {
+resource "aws_subnet" "sub_mel_datasphere_private_b" {
   vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.2.0/24"
+  cidr_block        = "10.0.0.16/28"
   availability_zone = "ap-southeast-2b"
 
   
@@ -95,7 +95,7 @@ resource "aws_subnet" "sub_mel_PROJECT_02" {
 # -------------------------------
 # S3 Bucket
 # -------------------------------
-resource "aws_s3_bucket" "static_files_s3" {
+resource "aws_s3_bucket" "s3_mel_datasphere" {
   bucket = var.s3_bucket_name
 
   tags        = local.tags
@@ -108,8 +108,8 @@ resource "aws_s3_bucket" "static_files_s3" {
 
 }
 
-resource "aws_s3_bucket_policy" "allow_vpc_endpoint" {
-  bucket = aws_s3_bucket.static_files_s3.id
+resource "aws_s3_bucket_policy" "s3bp_mel_datasphere" {
+  bucket = aws_s3_bucket.s3_mel_datasphere.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -117,7 +117,7 @@ resource "aws_s3_bucket_policy" "allow_vpc_endpoint" {
         Effect    = "Allow"
         Principal = "*"
         Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.static_files_s3.arn}/*"
+        Resource  = "${aws_s3_bucket.s3_mel_datasphere.arn}/*"
         Condition = {
           StringEquals = {
             "aws:SourceVpce" = aws_vpc_endpoint.s3_vpc_endpoint.id
@@ -128,7 +128,7 @@ resource "aws_s3_bucket_policy" "allow_vpc_endpoint" {
         Effect: "Allow",
         Principal: "*",
         Action: "s3:ListBucket",
-        Resource: "${aws_s3_bucket.static_files_s3.arn}",
+        Resource: "${aws_s3_bucket.s3_mel_datasphere.arn}",
         Condition: {
           StringEquals: {
             "aws:SourceVpce": aws_vpc_endpoint.s3_vpc_endpoint.id
@@ -145,7 +145,7 @@ resource "aws_vpc_endpoint" "s3_vpc_endpoint" {
   service_name        = "com.amazonaws.ap-southeast-2.s3"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = local.vpce_subnet_ids
-  security_group_ids  = [aws_security_group.sgr_mel_PROJECT_02.id]
+  security_group_ids  = [aws_security_group.sgr_mel_datasphere_vpce.id]
   private_dns_enabled = true
 }
 
@@ -162,7 +162,7 @@ data "aws_network_interface" "vpce_eni" {
 # -------------------------------
 # Security Group for ALB
 # -------------------------------
-resource "aws_security_group" "sgr_mel_PROJECT_01" {
+resource "aws_security_group" "sgr_mel_datasphere_alb" {
   vpc_id = aws_vpc.main.id
   name   = "sgr-${var.env}-mel-${var.project}-${var.sg1_suffix}"
 
@@ -191,7 +191,7 @@ resource "aws_security_group" "sgr_mel_PROJECT_01" {
 # -------------------------------
 # Security Group for VPC Endpoint
 # -------------------------------
-resource "aws_security_group" "sgr_mel_PROJECT_02" {
+resource "aws_security_group" "sgr_mel_datasphere_vpce" {
   vpc_id = aws_vpc.main.id
   name   = "sgr-${var.env}-mel-${var.project}-${var.sg2_suffix}"  
 
@@ -203,14 +203,14 @@ resource "aws_security_group" "sgr_mel_PROJECT_02" {
   ) 
 
   ingress {
-    security_groups = [aws_security_group.sgr_mel_PROJECT_01.id]
+    security_groups = [aws_security_group.sgr_mel_datasphere_alb.id]
     from_port   = 443
     protocol = "tcp"
     to_port     = 443
   }
 
   ingress {
-    security_groups = [aws_security_group.sgr_mel_PROJECT_01.id]
+    security_groups = [aws_security_group.sgr_mel_datasphere_alb.id]
     from_port   = 80
     protocol = "tcp"
     to_port     = 80
@@ -230,16 +230,16 @@ resource "aws_security_group" "sgr_mel_PROJECT_02" {
 # -------------------------------
 # ALB
 # -------------------------------
-resource "aws_lb" "alb_Stg_mel_PROJECT_01" {  
-  name               = "alb-Stg-mel-PROJECT-01"
+resource "aws_lb" "alb_mel_datasphere" {  
+  name               = "alb-${var.env}-mel-${var.project}"
   internal           = true
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.sgr_mel_PROJECT_01.id]
-  subnets            = [aws_subnet.sub_mel_PROJECT_01.id, aws_subnet.sub_mel_PROJECT_02.id]
+  security_groups    = [aws_security_group.sgr_mel_datasphere_alb.id]
+  subnets            = [aws_subnet.sub_mel_datasphere_private_a.id, aws_subnet.sub_mel_datasphere_private_b.id]
   tags               = local.tags
 }
 
-resource "aws_lb_target_group" "albtg_mel_project" {
+resource "aws_lb_target_group" "albtg_mel_datasphere" {
   name     = "albtg-${var.env}-mel-${var.project}"
   port     = 443
   protocol = "HTTPS"
@@ -266,14 +266,14 @@ resource "aws_lb_target_group" "albtg_mel_project" {
 # Attach each discovered IP to the target group
 resource "aws_lb_target_group_attachment" "vpce_ip_attachments" {
   for_each         = local.vpce_ips_map
-  target_group_arn = aws_lb_target_group.albtg_mel_project.arn
+  target_group_arn = aws_lb_target_group.albtg_mel_datasphere.arn
   target_id        = each.value
   port             = 443
 }
 
 
 resource "aws_lb_listener" "https_listener" {
-  load_balancer_arn = aws_lb.alb_Stg_mel_PROJECT_01.arn
+  load_balancer_arn = aws_lb.alb_mel_datasphere.arn
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = var.ssl_policy
@@ -281,7 +281,7 @@ resource "aws_lb_listener" "https_listener" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.albtg_mel_project.arn
+    target_group_arn = aws_lb_target_group.albtg_mel_datasphere.arn
   }
   
 }
@@ -322,20 +322,3 @@ output "vpce_eni_ids_sorted" {
 output "vpce_ips" {
   value = [for _, eni in data.aws_network_interface.vpce_eni : eni.private_ip]
 }
-
-
-# -------------------------------
-# PrivateLink Endpoint for ALB → S3
-# -------------------------------
-#resource "aws_vpc_endpoint_service" "alb_service" {
-#  acceptance_required        = false
-#  network_load_balancer_arns = [aws_lb.alb_Stg_mel_PROJECT_01.arn]
-#}
-
-#resource "aws_vpc_endpoint" "alb_endpoint" {
-#  vpc_id             = aws_vpc.main.id
-#  service_name       = aws_vpc_endpoint_service.alb_service.service_name
-#  vpc_endpoint_type  = "Interface"
-#  subnet_ids         = [aws_subnet.sub_Stg_mel_PROJECT_01.id, aws_subnet.sub_Stg_mel_PROJECT_02.id]
-#  security_group_ids = [aws_security_group.sgr_mel_PROJECT_01.id]
-#}
