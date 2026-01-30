@@ -24,19 +24,19 @@ locals {
     var.tags
   )
 
-  # We'll derive a stable key set for for_each: "0","1" (one per VPCE subnet)
-  # NOTE: Using a literal list means Terraform knows its length at plan time,
-  # even though the individual IDs are unknown until apply.
+  # Static, plan-time-known list of subnets for VPCE placement
   vpce_subnet_ids = [
     aws_subnet.sub_mel_PROJECT_01.id,
     aws_subnet.sub_mel_PROJECT_02.id
   ]
 
   vpce_indices = toset([for i in range(length(local.vpce_subnet_ids)) : tostring(i)])
+
+  
+  # Convert the VPCE's set of ENI IDs to a *sorted list* so we can index it
+  vpce_eni_ids_sorted = sort(tolist(aws_vpc_endpoint.s3_vpc_endpoint.network_interface_ids))
+
 }
-
-
-
 
 
 # Map: index -> ENI primary private IP (keys known at plan)
@@ -145,23 +145,24 @@ resource "aws_vpc_endpoint" "s3_vpc_endpoint" {
   service_name        = "com.amazonaws.ap-southeast-2.s3"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = local.vpce_subnet_ids
-  security_group_ids  = [aws_security_group.sgr_Stg_mel_PROJECT_02.id]
+  security_group_ids  = [aws_security_group.sgr_mel_PROJECT_02.id]
   private_dns_enabled = true
 }
 
 
 # Read each ENI by stable index key
 data "aws_network_interface" "vpce_eni" {
-  for_each = local.vpce_indices
-  id       = aws_vpc_endpoint.s3_vpc_endpoint.network_interface_ids[tonumber(each.key)]
-  depends_on = [aws_vpc_endpoint.s3_vpc_endpoint]
+  for_each = local.vpce_indices  
+  id         = local.vpce_eni_ids_sorted[tonumber(each.key)]
+  depends_on = [aws_vpc_endpoint.s3_vpc_endpoint] # ensures the VPCE is created before reading ENIs
+
 }
 
 
 # -------------------------------
 # Security Group for ALB
 # -------------------------------
-resource "aws_security_group" "sgr_Stg_mel_PROJECT_01" {
+resource "aws_security_group" "sgr_mel_PROJECT_01" {
   vpc_id = aws_vpc.main.id
   name   = "sgr-${var.env}-mel-${var.project}-${var.sg1_suffix}"
 
@@ -190,7 +191,7 @@ resource "aws_security_group" "sgr_Stg_mel_PROJECT_01" {
 # -------------------------------
 # Security Group for VPC Endpoint
 # -------------------------------
-resource "aws_security_group" "sgr_Stg_mel_PROJECT_02" {
+resource "aws_security_group" "sgr_mel_PROJECT_02" {
   vpc_id = aws_vpc.main.id
   name   = "sgr-${var.env}-mel-${var.project}-${var.sg2_suffix}"  
 
@@ -202,10 +203,17 @@ resource "aws_security_group" "sgr_Stg_mel_PROJECT_02" {
   ) 
 
   ingress {
-    security_groups = [aws_security_group.sgr_Stg_mel_PROJECT_01.id]
+    security_groups = [aws_security_group.sgr_mel_PROJECT_01.id]
     from_port   = 443
     protocol = "tcp"
     to_port     = 443
+  }
+
+  ingress {
+    security_groups = [aws_security_group.sgr_mel_PROJECT_01.id]
+    from_port   = 80
+    protocol = "tcp"
+    to_port     = 80
   }
 
   egress {
@@ -226,7 +234,7 @@ resource "aws_lb" "alb_Stg_mel_PROJECT_01" {
   name               = "alb-Stg-mel-PROJECT-01"
   internal           = true
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.sgr_Stg_mel_PROJECT_01.id]
+  security_groups    = [aws_security_group.sgr_mel_PROJECT_01.id]
   subnets            = [aws_subnet.sub_mel_PROJECT_01.id, aws_subnet.sub_mel_PROJECT_02.id]
   tags               = local.tags
 }
@@ -241,10 +249,10 @@ resource "aws_lb_target_group" "albtg_mel_project" {
   # Health checks via HTTP on port 80 with relaxed success codes
   health_check {
     enabled             = true
-    protocol            = "HTTPS"              
-    port                = "443"                 # Port override to match HTTP
+    protocol            = "HTTP"              
+    port                = "80"                 # Port override to match HTTP
     path                = "/"                  # S3 will respond even without Host header
-    matcher             = "200-499"        # Accept 4xx to accommodate S3 responses without correct Host
+    matcher             = "200,307,405"        # Accept 4xx to accommodate S3 responses without correct Host
     interval            = 30
     timeout             = 5
     healthy_threshold   = 3
@@ -307,6 +315,15 @@ resource "aws_lb_listener_rule" "redirect_trailing_slash" {
 
 }
 
+output "vpce_eni_ids_sorted" {
+  value = local.vpce_eni_ids_sorted
+}
+
+output "vpce_ips" {
+  value = [for _, eni in data.aws_network_interface.vpce_eni : eni.private_ip]
+}
+
+
 # -------------------------------
 # PrivateLink Endpoint for ALB → S3
 # -------------------------------
@@ -320,5 +337,5 @@ resource "aws_lb_listener_rule" "redirect_trailing_slash" {
 #  service_name       = aws_vpc_endpoint_service.alb_service.service_name
 #  vpc_endpoint_type  = "Interface"
 #  subnet_ids         = [aws_subnet.sub_Stg_mel_PROJECT_01.id, aws_subnet.sub_Stg_mel_PROJECT_02.id]
-#  security_group_ids = [aws_security_group.sgr_Stg_mel_PROJECT_01.id]
+#  security_group_ids = [aws_security_group.sgr_mel_PROJECT_01.id]
 #}
