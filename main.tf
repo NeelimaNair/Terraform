@@ -179,7 +179,7 @@ resource "aws_security_group" "sgr_mel_datasphere_alb" {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"] # Restrict to VPC
+    cidr_blocks = [aws_vpc.main.cidr_block] # Restrict to VPC
   }
 
   egress {
