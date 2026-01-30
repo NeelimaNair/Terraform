@@ -1,3 +1,5 @@
+#TODO:Update variable values. Replace datasphere, static with actual
+#TODO:Check if gateway endpoint is already there. If not create.
 provider "aws" {
   region = "ap-southeast-2" # Sydney
 }
@@ -146,7 +148,7 @@ resource "aws_vpc_endpoint" "s3_vpc_endpoint" {
   vpc_endpoint_type   = "Interface"
   subnet_ids          = local.vpce_subnet_ids
   security_group_ids  = [aws_security_group.sgr_mel_datasphere_vpce.id]
-  private_dns_enabled = true
+  private_dns_enabled = false
 }
 
 
